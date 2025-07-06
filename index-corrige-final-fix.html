@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <title>Jeu Quiz Collège</title> <!-- Titre de l'onglet du navigateur -->
+    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- Adaptation mobile -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600&display=swap" rel="stylesheet"> <!-- Importation de polices -->
+    <audio id="sound-plus" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+    <audio id="sound-minus" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+    <style>
+      /* Style général du site */
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: 'Poppins', sans-serif; /* Police principale */
+        background-color: #ffe4e1; /* Couleur de fond pastel */
+        color: white; /* Couleur texte */
+        text-align: center;
+        min-height: 100vh;
+      }
+      .container {
+        background-color: #1e1e1e; /* Fond sombre pour le cadre principal */
+        border-radius: 12px;
+        max-width: 1100px;
+        margin: 2rem auto;
+        padding: 2rem;
+        box-shadow: 0 0 25px rgba(0,0,0,0.6); /* Ombre */
+      }
+      h1 {
+        font-family: 'Bebas Neue', cursive;
+        font-size: 3.5rem;
+        color: #ffd700; /* Jaune doré */
+        letter-spacing: 2px;
+        margin: 1rem 0;
+      }
+      input, select, button {
+        padding: 10px;
+        margin: 8px;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+      }
+      input, select {
+        width: 220px;
+        background-color: #f3f3f3;
+        color: #333;
+      }
+      select {
+        background-color: #ffd700;
+        color: #000;
+        font-weight: bold;
+        text-align: center;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 30px;
+        background-image: url('https://cdn-icons-png.flaticon.com/512/32/32195.png'); /* flèche dropdown */
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 15px;
+      }
+      button {
+        background-color: #ffd700;
+        color: #000;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #ffa500; /* Orange au survol */
+      }
+      .logout, .reset {
+        background-color: #ef4444; /* Rouge */
+        color: white;
+      }
+      .header-bar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+      }
+      .header-bar img {
+        height: 70px;
+      }
+      .welcome-message {
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        color: #f0f0f0;
+      }
+      .student-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.6rem;
+        justify-content: center;
+        align-items: center;
+        padding: 0.5rem;
+        width: 100%;
+        height: calc(100vh - 220px); /* timer + bouton */
+        overflow: hidden;
+      }
+      
+      .card {
+        background: #1e293b;
+        border: 2px solid #ffd700;
+        border-radius: 12px;
+        padding: 0.5rem;
+        min-width: 90px;
+        max-width: 120px;
+        flex-grow: 1;
+        text-align: center;
+        font-size: 0.85rem;
+      }
+      
+      .avatar {
+        width: 36px;
+        height: 36px;
+        margin: auto;
+        margin-bottom: 0.3rem;
+        object-fit: cover;
+        border-radius: 50%;
+      }
+      
+      .card button {
+        padding: 4px 8px;
+        margin: 2px;
+        font-size: 0.75rem;
+        border-radius: 6px;
+      }
+
+      .card p.score {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+      }
+
+      .hidden {
+        display: none;
+      }
+      ol, ul {
+        text-align: left;
+        display: inline-block;
+        color: #ffffff;
+      }
+      .admin-section {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 2px solid #ffd700;
+      }
+      .admin-section h2 {
+        color: #ffd700;
+      }
+      .admin-logo {
+        cursor: pointer;
+        margin-top: 2rem;
+      }
+      .admin-logo img {
+        height: 60px;
+      }
+      .delete-btn {
+        margin-left: 10px;
+        cursor: pointer;
+        color: #ef4444;
+        font-weight: bold;
+      }
+      #liveGame {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #111;
+        border-radius: 10px;
+      }
+      #timer {
+        font-size: 2rem;
+        margin: 1rem 0;
+        color: #ffd700;
+      }
+      #buzzerSound, #endSound {
+        display: none; /* Les sons ne sont pas visibles */
+      }
+      .class-table {
+        margin-top: 1rem;
+        border-collapse: collapse;
+        width: 100%;
+      }
+      .class-table th, .class-table td {
+        border: 1px solid #ffd700;
+        padding: 10px;
+        text-align: left;
+      }
+      .class-table th {
+        background-color: #ffd700;
+        color: #000;
+      }
+      .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        margin: 1rem 0;
+      }
+      
+      .checkbox-group label {
+        background-color: #2d3748;
+        border: 1px solid #ffd700;
+        border-radius: 8px;
+        padding: 8px 12px;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      
+      .checkbox-group input[type="checkbox"] {
+        display: none;
+      }
+      
+      .checkbox-group input[type="checkbox"]:checked + span {
+        background-color: #ffd700;
+        color: #000;
+        font-weight: bold;
+      }
+      
+      .class-logo {
+        display: inline-block;
+        margin: 10px;
+        cursor: pointer;
+        border: 2px solid #ffd700;
+        border-radius: 12px;
+        padding: 10px;
+        background-color: #2d3748;
+      }
+      .class-logo:hover {
+        background-color: #ffd700;
+        color: #000;
+      }
+      .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        margin: 1rem 0;
+      }
+      .checkbox-group label {
+        background-color: #2d3748;
+        border: 1px solid #ffd700;
+        border-radius: 8px;
+        padding: 8px 12px;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      .checkbox-group input[type="checkbox"] {
+        display: none;
+      }
+      .checkbox-group input[type="checkbox"]:checked + span {
+        background-color: #ffd700;
+        color: #000;
+        font-weight: bold;
+      }
+            @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      
+            
+      .end-game-btn {
+        margin-top: 1rem;
+        padding: 8px 16px;
+        font-size: 1rem;
+        background-color: #ef4444;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      
+      .end-game-btn:hover {
+        background-color: #dc2626;
+      }
+
+      #globalRanking {
+        list-style: none;
+        padding: 0;
+        margin-top: 1.5rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: left;
+      }
+      
+      #globalRanking li {
+        background: #2d3748;
+        border: 2px solid #ffd700;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        padding: 12px 18px;
+        font-size: 1.1rem;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.2s ease-in-out;
+      }
+      
+      #globalRanking li:hover {
+        transform: scale(1.03);
+        background-color: #3b4252;
+      }
+      
+      .rank-number {
+        font-weight: bold;
+        color: #ffd700;
+        margin-right: 10px;
+      }
+      .reset-ranking-btn {
+        background-color: #ef4444;
+        color: white;
+        padding: 10px 20px;
+        margin-top: 1rem;
+        border-radius: 10px;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      
+      .reset-ranking-btn:hover {
+        background-color: #dc2626;
+      }
+
+      .student-class {
+        font-style: italic;
+        font-size: 0.9rem;
+        color: #cbd5e1;
+        margin: 0.3rem 0;
+      }
+
+    
+/* Design amélioré pour la page de partie en direct */
+      .fullscreen-game {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 1rem;
+        z-index: 9999;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+.end-game-btn {
+  margin-top: 2rem;
+  padding: 12px 28px;
+  font-size: 1.2rem;
+  background-color: #ef4444;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.end-game-btn:hover {
+  background-color: #dc2626;
+}
+      #timer {
+        position: sticky;
+        top: 0;
+        background-color: #1e293b;
+        padding: 0.5rem;
+        font-size: 1.5rem;
+        z-index: 10;
+      }
+      
+      .end-game-btn {
+        position: sticky;
+        bottom: 0;
+        background-color: #ef4444;
+        padding: 10px 20px;
+        margin-top: 1rem;
+        z-index: 10;
+      }
+
+      .medal {
+        font-size: 1.8rem;
+        margin-bottom: 0.2rem;
+        animation: pop 0.6s ease-in-out infinite alternate;
+      }
+      
+      @keyframes pop {
+        from { transform: scale(1); }
+        to { transform: scale(1.2); }
+      }
+
+      .score-big {
+        font-size: 2rem;
+        font-weight: bold;
+      }
+
+      .admin-logo {
+        display: none; /* Caché par défaut */
+      }
+      .bonus-btn {
+        background-color: #4ade80;
+        color: #000;
+        font-size: 1.1rem;
+        padding: 10px 20px;
+        border-radius: 8px;
+        margin: 10px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      
+      .bonus-btn:hover {
+        background-color: #22c55e;
+      }
+
+      .toggle-mode {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+      }
+      
+      .toggle-mode input[type="radio"] {
+        display: none;
+      }
+      
+      .toggle-label {
+        padding: 10px 20px;
+        background-color: #2d3748;
+        color: white;
+        border: 2px solid #ffd700;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+      }
+      
+      .toggle-label:hover {
+        background-color: #ffd700;
+        color: #000;
+        transform: scale(1.05);
+      }
+      
+      .toggle-mode input[type="radio"]:checked + .toggle-label {
+        background-color: #ffd700;
+        color: #000;
+      }
+      .game-setup {
+        background: linear-gradient(to bottom right, #1f2937, #111827);
+        border: 3px solid #ffd700;
+        border-radius: 15px;
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+        padding: 2rem;
+        max-width: 600px;
+        margin: 2rem auto;
+        text-align: center;
+        transition: transform 0.2s ease;
+      }
+      
+      .game-setup:hover {
+        transform: scale(1.01);
+      }
+      
+      .game-setup h2 {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+        color: #ffd700;
+        border-bottom: 2px dashed #ffd700;
+        padding-bottom: 0.5rem;
+      }
+
+      #classRanking {
+        list-style: none;
+        padding: 0;
+        margin-top: 1rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: left;
+      }
+      
+      #classRanking li {
+        background: #334155;
+        border: 2px solid #ffd700;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 10px 15px;
+        font-size: 1rem;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #rankingSection ol {
+        list-style: none;
+        padding: 0;
+        margin-top: 1rem;
+        text-align: left;
+      }
+      
+      #rankingSection li {
+        background: #2d3748;
+        border: 2px solid #ffd700;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        padding: 12px 18px;
+        font-size: 1.1rem;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.2s ease-in-out;
+      }
+      
+      #rankingSection li:hover {
+        transform: scale(1.03);
+        background-color: #3b4252;
+      }
+
+
+</style>
+  </head>
+  <body>
+    <!-- Conteneur principal du site -->
+
+      <div class="container" id="mainInterface">
+        
+      <!-- En-tête avec logo, titre et icônes -->
+      <div class="header-bar">
+        <img src="https://cdn-icons-png.flaticon.com/512/2948/2948037.png" alt="Quiz logo"> <!-- Logo à gauche -->
+        <h1>🎓 Quiz du Collège Jean Papon 🎓</h1> <!-- Titre du site -->
+        <img src="https://cdn-icons-png.flaticon.com/512/2965/2965567.png" alt="Buzzer logo"> <!-- Logo à droite -->
+      </div>
+      
+      <!-- Message de bienvenue -->
+      <p class="welcome-message">
+        Bienvenue sur la plateforme interactive pour tester tes connaissances et buzzer plus vite que les autres !
+      </p>
+      
+      <!-- Formulaire de connexion -->
+      <div id="login">
+        <input type="text" id="username" placeholder="Nom d'utilisateur"> <!-- Champ identifiant -->
+        <input type="password" id="password" placeholder="Mot de passe"> <!-- Champ mot de passe -->
+        <button onclick="login()">Se connecter</button> <!-- Bouton de connexion -->
+      </div>
+      
+      <!-- Application après connexion -->
+      <div id="app" class="hidden">
+        <p id="welcome"></p> <!-- Message de bienvenue personnalisé -->
+        <button onclick="logout()" class="logout">Déconnexion</button> <!-- Bouton de déconnexion -->
+        
+        <div class="game-setup">
+          <h2>🎓 Nouvelle Partie</h2>
+
+        <!-- Création et lancement de partie -->
+        <div>
+          <input type="text" id="gameName" placeholder="Nom de la partie"> <!-- Nom personnalisé -->
+          <div class="setup-row">
+            <label style="margin-bottom: 0.6rem;">Mode de jeu :</label>
+            <div class="toggle-mode">
+              <input type="radio" id="soloMode" name="gameMode" value="solo" checked>
+              <label for="soloMode" class="toggle-label">🎯 Solo</label>
+              
+              <input type="radio" id="duoMode" name="gameMode" value="duo">
+              <label for="duoMode" class="toggle-label">🤝 Duo</label>
+            </div>
+          </div>
+          
+          <select id="subject"> <!-- Choix de la matière -->
+            <option value="Maths">Maths</option>
+            <option value="Français">Français</option>
+            <option value="Histoire">Histoire</option>
+            <option value="SVT">SVT</option>
+            <option value="Anglais">Anglais</option>
+          </select>
+          <button onclick="openPlayerSelection()">Lancer une partie</button>
+
+        </div>
+        </div>
+        
+        <!-- Section de sélection des joueurs à lancer -->
+        <div id="playerSelection" class="hidden">
+          <h3>👥 Sélection des joueurs</h3>
+          <div id="classSelection"></div>
+          <div id="studentCheckboxes" class="checkbox-group"></div>
+          <button onclick="startLiveGame()">Démarrer la partie</button>
+        </div>
+        </div>
+
+        
+        <!-- Affichage de la partie en cours -->
+        <div id="liveGame" class="hidden">
+          <h2>🎮 Partie en direct</h2>
+          <p id="gameDetails"></p> <!-- Détails partie -->
+          <div id="timer">00:00</div> <!-- Chronomètre -->
+          <div id="livePlayers" class="student-cards"></div> <!-- Cartes des joueurs en live -->
+          <button onclick="activateSuperBonus()" class="bonus-btn">🎁 SUPER BONUS</button>
+          <button onclick="endLiveGame()" class="end-game-btn">Clôturer la partie</button>
+          
+          
+        </div>
+        
+                
+        <!-- Classement général -->
+
+        <div id="rankingSection" class="hidden" style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 300px;">
+            <h2>🏆 Classement Général</h2>
+            <ol id="globalRanking"></ol>
+          </div>
+          <div style="flex: 1; min-width: 300px;">
+            <h2>🏫 Classement des Classes</h2>
+            <ol id="classRanking"></ol>
+            <div style="flex: 1; min-width: 300px;">
+              <h2>📚 Classement par Matière</h2>
+              <select id="subjectRankingSelect" onchange="updateSubjectRanking()" style="margin-bottom: 10px;">
+                <option value="Maths">Maths</option>
+                <option value="Français">Français</option>
+                <option value="Histoire">Histoire</option>
+                <option value="SVT">SVT</option>
+                <option value="Anglais">Anglais</option>
+              </select>
+              <ol id="subjectRanking"></ol>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Bouton vers l'administration -->
+        <div class="admin-logo" onclick="toggleAdmin()">
+          <img src="https://cdn-icons-png.flaticon.com/512/1828/1828774.png" alt="Administration">
+          <p>Administration</p>
+        </div>
+        
+        
+        <!-- Section administration -->
+        <div class="admin-section hidden" id="adminSection">
+          
+          
+          <h2>🔧 Administration</h2>
+          <button onclick="exportData()">📤 Exporter les données</button>
+          <input type="file" id="importFile" accept=".json">
+          <button onclick="importData()">📥 Importer les données</button>
+
+          
+          <!-- Formulaire pour créer une classe -->
+          <button onclick="resetRanking()" class="reset-ranking-btn">🔄 Réinitialiser le classement</button>
+          
+          <div>
+            <input type="text" id="newClassName" placeholder="Nom de la classe">
+            <button onclick="createClass()">Créer une classe</button>
+          </div>
+          <div>
+            <select id="classSelector"></select>
+            <input type="text" id="newStudentName" placeholder="Nom de l'élève">
+            <button onclick="createStudent()">Ajouter un élève à la classe</button>
+          </div>
+          <p>Nombre total d'élèves : <span id="totalStudents"></span></p>
+          <div id="allStudentsList"></div>
+        </div>
+
+      
+      <!-- Sons des buzzers -->
+      <audio id="buzzerSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+      <audio id="endSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+    <script>
+      // Liste des utilisateurs autorisés à se connecter avec leur mot de passe
+      const users = {
+        "Jordan": "admin123",
+        "Marie": "marie123",
+        "Fabienne": "fabienne123"
+      };
+      const classes = JSON.parse(localStorage.getItem("classes") || "{}");
+      const globalScores = JSON.parse(localStorage.getItem("globalScores") || "{}");
+      const subjectScores = JSON.parse(localStorage.getItem("subjectScores") || "{}");
+      
+
+
+      let livePlayers = [];
+      let superBonusActive = false;
+      let liveInterval;
+      let time = 0;
+      
+      
+      
+      let currentUser = null;
+      
+      function login() {
+  
+        
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const users = {
+          "Jordan": "admin123",
+          "Marie": "marie123",
+          "Fabienne": "fabienne123"
+        };
+        
+        if (!users[username] || users[username] !== password) {
+          return alert("Nom d'utilisateur ou mot de passe incorrect.");
+        }
+        
+        currentUser = username;
+        
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("app").classList.remove("hidden");
+        document.getElementById("welcome").textContent = `Bienvenue, ${username} !`;
+        
+        // Si l'utilisateur est admin, afficher le bouton admin
+        const isAdmin = username === "Jordan";
+        document.querySelector(".admin-logo").style.display = isAdmin ? "block" : "none";
+        
+        updateAdmin();
+        updateGlobalRanking();
+        updateQuizStats();
+        
+        document.getElementById("rankingSection").classList.remove("hidden");
+        
+      }
+      
+      function logout() {
+        location.reload();
+      }
+      function resetRanking() {
+        const confirmReset = confirm("Es-tu sûr de vouloir réinitialiser tout le classement ?");
+        if (confirmReset) {
+          localStorage.removeItem("globalScores");
+          alert("Le classement a été réinitialisé !");
+          location.reload();
+        }
+      }
+
+      function createClass() {
+        const className = document.getElementById("newClassName").value.trim();
+        if (className && !classes[className]) {
+          classes[className] = [];
+          localStorage.setItem("classes", JSON.stringify(classes));
+          updateAdmin();
+        }
+      }
+      
+      function createStudent() {
+        const className = document.getElementById("classSelector").value;
+        const studentName = document.getElementById("newStudentName").value.trim();
+        if (className && studentName && !classes[className].includes(studentName)) {
+          classes[className].push(studentName);
+          localStorage.setItem("classes", JSON.stringify(classes));
+          updateAdmin();
+        }
+      }
+      
+      function updateAdmin() {
+        const selector = document.getElementById("classSelector");
+        selector.innerHTML = "";
+        let count = 0;
+        for (const className in classes) {
+          const option = document.createElement("option");
+          option.value = className;
+          option.textContent = className;
+          selector.appendChild(option);
+          count += classes[className].length;
+        }
+        document.getElementById("totalStudents").textContent = count;
+        
+        const allList = document.getElementById("allStudentsList");
+        allList.innerHTML = "";
+        for (const className in classes) {
+          const table = document.createElement("table");
+          table.className = "class-table";
+          const thead = document.createElement("thead");
+          thead.innerHTML = `<tr><th colspan="2">${className}</th></tr><tr><th>Nom</th><th>Actions</th></tr>`;
+          const tbody = document.createElement("tbody");
+          classes[className].forEach((student, index) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td>${student}</td><td><button onclick="deleteStudent('${className}', ${index})">Supprimer</button></td>`;
+            tbody.appendChild(row);
+          });
+          table.appendChild(thead);
+          table.appendChild(tbody);
+          allList.appendChild(table);
+        }
+      }
+      
+      function deleteStudent(className, index) {
+        classes[className].splice(index, 1);
+        localStorage.setItem("classes", JSON.stringify(classes));
+        updateAdmin();
+      }
+      
+      function openPlayerSelection() {
+        const classDiv = document.getElementById("classSelection");
+        const studentDiv = document.getElementById("studentCheckboxes");
+        classDiv.innerHTML = "";
+        studentDiv.innerHTML = ""; // Réinitialise au début uniquement
+        
+        const addedStudents = new Set(); // Pour éviter les doublons
+        
+        for (const className in classes) {
+          const logo = document.createElement("div");
+          logo.className = "class-logo";
+          logo.textContent = className;
+          
+          logo.onclick = () => {
+            classes[className].forEach(name => {
+              if (!addedStudents.has(name)) {
+                const label = document.createElement("label");
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = name;
+                
+                const span = document.createElement("span");
+                span.textContent = name;
+                
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                studentDiv.appendChild(label);
+                
+                addedStudents.add(name); // Marque l’élève comme déjà affiché
+              }
+            });
+          };
+          
+          classDiv.appendChild(logo);
+        }
+        
+        document.getElementById("playerSelection").classList.remove("hidden");
+      }
+
+
+      
+      function startLiveGame() {
+        
+        
+        document.getElementById("liveGame").classList.remove("hidden");
+        document.getElementById("liveGame").classList.add("fullscreen-game");
+
+        const name = document.getElementById("gameName").value.trim();
+        const subject = document.getElementById("subject").value;
+        const selected = Array.from(document.querySelectorAll('#studentCheckboxes input:checked'));
+        const isDuoMode = document.getElementById("duoMode").checked;
+        
+        if (!name || !subject || selected.length === 0) {
+          return alert("Remplissez tous les champs et sélectionnez des joueurs.");
+        }
+        
+        // Regroupe les joueurs en duos si nécessaire
+        if (isDuoMode && selected.length % 2 !== 0) {
+          return alert("En mode duo, sélectionnez un nombre pair d'élèves.");
+        }
+        
+        livePlayers = [];
+        
+        if (isDuoMode) {
+          for (let i = 0; i < selected.length; i += 2) {
+            const name1 = selected[i].value;
+            const name2 = selected[i + 1].value;
+            
+            livePlayers.push({
+              name: `${name1} & ${name2}`,
+              score: 0,
+              isDuo: true,
+              members: [name1, name2],
+              avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${name1}-${name2}`
+            });
+          }
+        } else {
+          livePlayers = selected.map(cb => ({
+            name: cb.value,
+            score: 0,
+            isDuo: false,
+            avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${cb.value}`
+          }));
+        }
+        
+        document.getElementById("playerSelection").classList.add("hidden");
+        document.getElementById("app").classList.add("hidden");
+        document.getElementById("liveGame").classList.remove("hidden");
+        document.getElementById("liveGame").classList.add("fullscreen-game");
+        
+        document.getElementById("gameDetails").textContent = `Partie : ${name} | Matière : ${subject}`;
+        updateLivePlayers();
+        startTimer();
+      }
+      
+      function updateLivePlayers() {
+        const container = document.getElementById("livePlayers");
+        container.innerHTML = "";
+        
+        // Trouve le meilleur score
+        let bestScore = Math.max(...livePlayers.map(p => p.score));
+        
+        livePlayers.forEach(player => {
+          const isLeader = player.score === bestScore && bestScore > 0;
+          const medalHTML = isLeader ? `<div class="medal">🥇</div>` : "";
+          
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+      ${medalHTML}
+      <img src="${player.avatar}" class="avatar">
+      <h3>${player.name}</h3>
+      <p id="score-${player.name}" class="score-big zero">${player.score} pts</p>
+
+      <div class="progress-bar">
+        <div id="bar-${player.name}" class="progress-fill" style="width: ${(player.score / 20) * 100}%"></div>
+      </div>
+      <button onclick="changeScore('${player.name}', 1)">+1</button>
+      <button onclick="changeScore('${player.name}', -1)">-1</button>
+    `;
+          container.appendChild(div);
+        });
+      }
+      
+      function changeScore(name, delta) {
+        const player = livePlayers.find(p => p.name === name);
+        if (!player) return;
+        
+        if (superBonusActive && delta > 0) {
+          delta = 5;
+          superBonusActive = false;
+          alert(`${name} a gagné le SUPER BONUS (+5 points) !`);
+        }
+        
+        player.score += delta;
+        
+        const currentSubject = document.getElementById("subject").value;
+        
+        if (!subjectScores[currentSubject]) subjectScores[currentSubject] = {};
+        
+        if (player.isDuo && player.members) {
+          player.members.forEach(member => {
+            subjectScores[currentSubject][member] = (subjectScores[currentSubject][member] || 0) + delta / 2;
+          });
+        } else {
+          subjectScores[currentSubject][name] = (subjectScores[currentSubject][name] || 0) + delta;
+        }
+        
+        localStorage.setItem("subjectScores", JSON.stringify(subjectScores));
+
+        
+        if (player.isDuo && player.members) {
+          player.members.forEach(member => {
+            globalScores[member] = (globalScores[member] || 0) + delta / 2;
+          });
+        } else {
+          globalScores[name] = (globalScores[name] || 0) + delta;
+        }
+        
+        localStorage.setItem("globalScores", JSON.stringify(globalScores));
+        
+        // Mise à jour individuelle
+        const scoreEl = document.getElementById("score-" + name);
+        if (scoreEl) {
+          scoreEl.textContent = `${player.score} pts`;
+          scoreEl.className = `score score-big ${player.score > 0 ? "positive" : (player.score < 0 ? "negative" : "zero")}`;
+        }
+        
+        const bar = document.getElementById("bar-" + name);
+        if (bar) {
+          bar.style.width = `${Math.min(100, Math.max(0, (player.score / 20) * 100))}%`;
+        }
+        
+        updateLivePlayers();
+      }
+
+
+      
+      function endLiveGame() {
+        clearInterval(liveInterval); // Stoppe le chrono
+        document.getElementById("liveGame").classList.add("hidden");
+        document.getElementById("liveGame").classList.remove("fullscreen-game"); // Enlève le plein écran
+        document.getElementById("app").classList.remove("hidden"); // Réaffiche le site normal
+        localStorage.setItem("globalScores", JSON.stringify(globalScores));
+        updateGlobalRanking();
+        livePlayers = [];
+      }
+      
+      function updateGlobalRanking() {
+        const list = document.getElementById("globalRanking");
+        const classList = document.getElementById("classRanking");
+        if (!list || !classList) return;
+        
+        list.innerHTML = "";
+        classList.innerHTML = "";
+        
+        // Classement général individuel
+        Object.entries(globalScores)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([name, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${name} - ${score} pts`;
+          list.appendChild(li);
+        });
+        
+        // Classement des classes
+        const classScores = {};
+        for (const className in classes) {
+          const students = classes[className];
+          const total = students.reduce((sum, student) => sum + (globalScores[student] || 0), 0);
+          classScores[className] = total;
+        }
+        
+        Object.entries(classScores)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([className, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${className} - ${score} pts`;
+          classList.appendChild(li);
+        });
+      }
+
+      
+      function toggleAdmin() {
+        const admin = document.getElementById("adminSection");
+        const ranking = document.getElementById("rankingSection");
+        admin.classList.toggle("hidden");
+        
+        // Cache le classement quand l'administration est ouverte
+        if (!admin.classList.contains("hidden")) {
+          ranking.classList.add("hidden");
+        } else {
+          ranking.classList.remove("hidden");
+        }
+      }
+
+      
+      function startTimer() {
+        time = 0;
+        clearInterval(liveInterval);
+        liveInterval = setInterval(() => {
+          time++;
+          const minutes = String(Math.floor(time / 60)).padStart(2, '0');
+          const seconds = String(time % 60).padStart(2, '0');
+          document.getElementById("timer").textContent = `${minutes}:${seconds}`;
+        }, 1000);
+      }
+      
+      function activateSuperBonus() {
+        superBonusActive = true;
+        alert("🟡 SUPER BONUS activé : le prochain bon répondant gagnera +5 points !");
+      }
+
+      function updateSubjectRanking() {
+        const subject = document.getElementById("subjectRankingSelect").value;
+        const list = document.getElementById("subjectRanking");
+        
+        list.innerHTML = "";
+        
+        if (!subjectScores[subject]) return;
+        
+        Object.entries(subjectScores[subject])
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([name, score]) => {
+          const li = document.createElement("li");
+          li.textContent = `${name} - ${score} pts`;
+          list.appendChild(li);
+        });
+      }
+      
+      function exportData() {
+        const data = {
+          classes,
+          globalScores
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "donnees_quiz.json";
+        a.click();
+        
+        URL.revokeObjectURL(url);
+      }
+      function importData() {
+        const fileInput = document.getElementById("importFile");
+        const file = fileInput.files[0];
+        if (!file) return alert("Aucun fichier sélectionné");
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const importedData = JSON.parse(e.target.result);
+            if (importedData.classes && importedData.globalScores) {
+              Object.assign(classes, importedData.classes);
+              Object.assign(globalScores, importedData.globalScores);
+              localStorage.setItem("classes", JSON.stringify(classes));
+              localStorage.setItem("globalScores", JSON.stringify(globalScores));
+              alert("Import réussi !");
+              updateAdmin();
+              updateGlobalRanking();
+            } else {
+              alert("Fichier invalide");
+            }
+          } catch (err) {
+            alert("Erreur lors de la lecture du fichier");
+          }
+        };
+        
+        reader.readAsText(file);
+      }
+
+
+
+      
+      window.onload = function () {
+        document.getElementById("rankingSection").classList.add("hidden");
+        updateAdmin();
+        updateGlobalRanking();
+        updateSubjectRanking();
+        openPlayerSelection();
+
+      };
+    </script>
+
+  
+
+      
