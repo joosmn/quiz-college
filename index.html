@@ -349,6 +349,7 @@
         z-index: 9999;
         box-sizing: border-box;
         overflow: hidden;
+        border-radius: 0; /* ✅ ajoute ça ou supprime toute bordure */
       }
 .end-game-btn {
   margin-top: 2rem;
@@ -650,9 +651,53 @@
       .student-list li button:hover {
         background-color: #dc2626;
       }
+      
+      body.fullscreen-mode {
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      @keyframes fadeZoomIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      
+      .fullscreen-game.animate-in {
+        animation: fadeZoomIn 0.5s ease-out;
+      }
+
+      @keyframes slideFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .card {
+        opacity: 0;
+        animation: slideFadeIn 0.5s ease forwards;
+      }
+
+      .card.leader {
+        border: 3px solid gold;
+        box-shadow: 0 0 10px gold;
+      }
+
 
 
 </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   </head>
   <body>
     <!-- Conteneur principal du site -->
@@ -708,7 +753,6 @@
             <option value="SVT">SVT</option>
             <option value="Anglais">Anglais</option>
           </select>
-          <button onclick="openPlayerSelection()">Lancer une partie</button>
 
         </div>
         </div>
@@ -718,6 +762,12 @@
           <h3>👥 Sélection des joueurs</h3>
           <div id="classSelection"></div>
           <div id="studentCheckboxes" class="checkbox-group"></div>
+          <button onclick="resetStudentSelections()">🔁 Tout désélectionner</button>
+          
+          <h3>Duos</h3>
+          <button onclick="createDuo()">👥 Former un duo avec 2 élèves sélectionnés</button>
+          <ul id="duoList"></ul>
+
           <button onclick="startLiveGame()">Démarrer la partie</button>
         </div>
         </div>
@@ -730,7 +780,7 @@
           <div id="timer">00:00</div> <!-- Chronomètre -->
           <div id="livePlayers" class="student-cards"></div> <!-- Cartes des joueurs en live -->
           <button onclick="activateSuperBonus()" class="bonus-btn">🎁 SUPER BONUS</button>
-          <button onclick="endLiveGame()" class="end-game-btn">Clôturer la partie</button>
+          <button onclick="endLiveGameWithWinner()">🏁 Clôturer & Annoncer le gagnant</button>
           
           
         </div>
@@ -753,29 +803,33 @@
         
                 
         <!-- Classement général -->
+        <button id="toggleRankingBtn" onclick="toggleRankingSection()">Afficher les classements</button>
 
-        <div id="rankingSection" class="hidden" style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+
+        <div id="rankingSection" style="display: none; justify-content: center; gap: 2rem; flex-wrap: wrap;">
           <div style="flex: 1; min-width: 300px;">
             <h2>🏆 Classement Général</h2>
             <ol id="globalRanking"></ol>
           </div>
+          
           <div style="flex: 1; min-width: 300px;">
             <h2>🏫 Classement des Classes</h2>
             <ol id="classRanking"></ol>
-            <div style="flex: 1; min-width: 300px;">
-              <h2>📚 Classement par Matière</h2>
-              <select id="subjectRankingSelect" onchange="updateSubjectRanking()" style="margin-bottom: 10px;">
-                <option value="Maths">Maths</option>
-                <option value="Français">Français</option>
-                <option value="Histoire">Histoire</option>
-                <option value="SVT">SVT</option>
-                <option value="Anglais">Anglais</option>
-              </select>
-              <ol id="subjectRanking"></ol>
-            </div>
-
+          </div>
+          
+          <div style="flex: 1; min-width: 300px;">
+            <h2>📚 Classement par Matière</h2>
+            <select id="subjectRankingSelect" onchange="updateSubjectRanking()" style="margin-bottom: 10px;">
+              <option value="Maths">Maths</option>
+              <option value="Français">Français</option>
+              <option value="Histoire">Histoire</option>
+              <option value="SVT">SVT</option>
+              <option value="Anglais">Anglais</option>
+            </select>
+            <ol id="subjectRanking"></ol>
           </div>
         </div>
+
 
         <!-- Bouton vers l'administration -->
         <div class="admin-logo" onclick="toggleAdmin()">
@@ -792,6 +846,14 @@
           <button onclick="exportData()">📤 Exporter les données</button>
           <input type="file" id="importFile" accept=".json">
           <button onclick="importData()">📥 Importer les données</button>
+          <button onclick="restoreFromBackup()" style="background-color:#3b82f6;color:white;padding:10px 20px;margin-top:10px;border-radius:8px;font-weight:bold;cursor:pointer;">
+            🔁 Restaurer depuis la dernière sauvegarde auto
+          </button>
+
+
+        
+
+          
 
           
           <!-- Formulaire pour créer une classe -->
@@ -808,13 +870,69 @@
           </div>
           <p>Nombre total d'élèves : <span id="totalStudents"></span></p>
           <div id="allStudentsList"></div>
+          
+          <!-- Fiche de profil élève -->
+          <div id="studentProfileModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 999;">
+            <div class="modal-content" style="background: white; border-radius: 12px; padding: 20px; width: 300px; text-align: center;">
+              <img id="profileAvatar" src="" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 10px;">
+              <h2 id="profileName"></h2>
+              <p><strong>Classe :</strong> <span id="profileClass"></span></p>
+              <p><strong>Points :</strong> <span id="profilePoints"></span></p>
+              <p><strong>Parties gagnées :</strong> <span id="profileWins"></span></p>
+              <button onclick="closeStudentProfile()">Fermer</button>
+            </div>
+          </div>
+
+          
+          <h3>➕ Ajouter des points manuellement</h3>
+          <select id="manualClassSelect"></select>
+          <select id="manualStudentSelect"></select>
+          <input type="number" id="manualPoints" placeholder="Points à ajouter">
+          <button onclick="addManualPoints()">Ajouter</button>
+
+          
+          <hr>
+          <h2>📜 Historique des parties</h2>
+          <div id="historyContainer"></div>
+          <button onclick="exportHistoryToPDF()" style="margin-bottom: 1rem; background-color:#22c55e; color:black; border:none; padding:8px 14px; border-radius:8px; font-weight:bold; cursor:pointer;">
+            📄 Exporter l’historique en PDF
+          </button>
+          
+          
         </div>
+        
+        
 
       
       <!-- Sons des buzzers -->
       <audio id="buzzerSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
       <audio id="endSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
     <script>
+      
+      let manualDuos = [];
+      
+      function createDuo() {
+        const selected = Array.from(document.querySelectorAll('#studentCheckboxes input:checked'));
+        if (selected.length !== 2) {
+          return alert("Coche exactement 2 élèves pour former un duo.");
+        }
+        
+        const name1 = selected[0].value;
+        const name2 = selected[1].value;
+        
+        if (manualDuos.flat().includes(name1) || manualDuos.flat().includes(name2)) {
+          return alert("Un des élèves est déjà dans un duo.");
+        }
+        
+        manualDuos.push([name1, name2]);
+        selected.forEach(cb => cb.checked = false);
+        
+        const li = document.createElement("li");
+        li.textContent = ${name1} & ${name2};
+        document.getElementById("duoList").appendChild(li);
+      }
+
       // Liste des utilisateurs autorisés à se connecter avec leur mot de passe
       const users = {
         "Jordan": "admin123",
@@ -855,7 +973,7 @@
         
         document.getElementById("login").classList.add("hidden");
         document.getElementById("app").classList.remove("hidden");
-        document.getElementById("welcome").textContent = `Bienvenue, ${username} !`;
+        document.getElementById("welcome").textContent = Bienvenue, ${username} !;
         
         // Si l'utilisateur est admin, afficher le bouton admin
         const isAdmin = username === "Jordan";
@@ -924,13 +1042,13 @@
           header.className = "class-card-header";
           
           const title = document.createElement("h3");
-          title.textContent = `${className} (${classes[className].length})`;
+          title.textContent = ${className} (${classes[className].length});
           
           
           const addBtn = document.createElement("button");
           addBtn.textContent = "➕";
           addBtn.onclick = () => {
-            const studentName = prompt(`Nom de l'élève à ajouter dans ${className} :`);
+            const studentName = prompt(Nom de l'élève à ajouter dans ${className} :);
             if (studentName && !classes[className].includes(studentName)) {
               classes[className].push(studentName);
               localStorage.setItem("classes", JSON.stringify(classes));
@@ -946,10 +1064,10 @@
           
           classes[className].forEach((student, index) => {
             const li = document.createElement("li");
-            li.innerHTML = `
+            li.innerHTML = 
       ${student}
       <button onclick="deleteStudent('${className}', ${index})">Supprimer</button>
-    `;
+    ;
             studentList.appendChild(li);
           });
           
@@ -963,6 +1081,31 @@
           allList.appendChild(card);
         }
       }
+      
+      const classSelect = document.getElementById("manualClassSelect");
+      const studentSelect = document.getElementById("manualStudentSelect");
+      classSelect.innerHTML = "";
+      studentSelect.innerHTML = "";
+      
+      for (const className in classes) {
+        const opt = document.createElement("option");
+        opt.value = className;
+        opt.textContent = className;
+        classSelect.appendChild(opt);
+      }
+      
+      classSelect.onchange = () => {
+        const selectedClass = classSelect.value;
+        studentSelect.innerHTML = "";
+        classes[selectedClass].forEach(name => {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          studentSelect.appendChild(opt);
+        });
+      };
+      classSelect.dispatchEvent(new Event("change"));
+
       function deleteStudent(className, index) {
         classes[className].splice(index, 1);
         localStorage.setItem("classes", JSON.stringify(classes));
@@ -973,9 +1116,20 @@
         const classDiv = document.getElementById("classSelection");
         const studentDiv = document.getElementById("studentCheckboxes");
         classDiv.innerHTML = "";
-        studentDiv.innerHTML = ""; // Réinitialise au début uniquement
+        studentDiv.innerHTML = "";
         
-        const addedStudents = new Set(); // Pour éviter les doublons
+        const visitedClasses = new Set();
+        
+        // 🔢 Crée le compteur une seule fois
+        let countDiv = document.getElementById("studentCount");
+        if (!countDiv) {
+          countDiv = document.createElement("div");
+          countDiv.id = "studentCount";
+          countDiv.style.marginTop = "0.5rem";
+          countDiv.style.fontWeight = "bold";
+          countDiv.style.color = "#ffd700";
+          studentDiv.parentElement.insertBefore(countDiv, studentDiv);
+        }
         
         for (const className in classes) {
           const logo = document.createElement("div");
@@ -983,49 +1137,113 @@
           logo.textContent = className;
           
           logo.onclick = () => {
+            visitedClasses.add(className);
+            
+            // 🔁 Garde les élèves déjà sélectionnés
+            const selectedNames = new Set(
+              Array.from(studentDiv.querySelectorAll('input[type="checkbox"]:checked'))
+              .map(cb => cb.value)
+            );
+            
+            studentDiv.innerHTML = "";
+            
+            // ➕ Réaffiche les élèves sélectionnés
+            for (const otherClass in classes) {
+              classes[otherClass].forEach(name => {
+                if (selectedNames.has(name)) {
+                  const label = document.createElement("label");
+                  const checkbox = document.createElement("input");
+                  checkbox.type = "checkbox";
+                  checkbox.value = name;
+                  checkbox.checked = true;
+                  checkbox.addEventListener("change", updateStudentCount);
+                  
+                  const span = document.createElement("span");
+                  span.textContent = ${name} (${otherClass});
+                  
+                  label.appendChild(checkbox);
+                  label.appendChild(span);
+                  studentDiv.appendChild(label);
+                }
+              });
+            }
+            
+            // ➕ Ajoute les nouveaux élèves de la classe cliquée
             classes[className].forEach(name => {
-              if (!addedStudents.has(name)) {
+              if (!selectedNames.has(name)) {
                 const label = document.createElement("label");
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.value = name;
+                checkbox.addEventListener("change", updateStudentCount);
                 
                 const span = document.createElement("span");
-                span.textContent = name;
+                span.textContent = ${name} (${className});
                 
                 label.appendChild(checkbox);
                 label.appendChild(span);
                 studentDiv.appendChild(label);
-                
-                addedStudents.add(name); // Marque l’élève comme déjà affiché
               }
             });
+            
+            // 🟨 Marque visuellement les classes déjà visitées
+            document.querySelectorAll(".class-logo").forEach(el => {
+              if (visitedClasses.has(el.textContent)) {
+                el.style.backgroundColor = "#fef08a";
+                el.style.color = "#000";
+              }
+            });
+            
+            updateStudentCount(); // 📢 met à jour le compteur après chaque clic
           };
           
           classDiv.appendChild(logo);
         }
         
+        // 🗑️ Bouton pour tout effacer
+        const resetBtn = document.createElement("button");
+        resetBtn.textContent = "🗑️ Tout effacer";
+        resetBtn.style.marginTop = "1rem";
+        resetBtn.style.backgroundColor = "#ef4444";
+        resetBtn.style.color = "#fff";
+        resetBtn.style.borderRadius = "8px";
+        resetBtn.style.padding = "8px 14px";
+        resetBtn.style.cursor = "pointer";
+        resetBtn.onclick = () => {
+          studentDiv.innerHTML = "";
+          countDiv.textContent = "";
+          visitedClasses.clear();
+          document.querySelectorAll(".class-logo").forEach(el => {
+            el.style.backgroundColor = "#2d3748";
+            el.style.color = "#fff";
+          });
+        };
+        
+        studentDiv.parentElement.appendChild(resetBtn);
         document.getElementById("playerSelection").classList.remove("hidden");
+      }
+
+
+      function updateStudentCount() {
+        const count = document.querySelectorAll('#studentCheckboxes input[type="checkbox"]:checked').length;
+        const countDiv = document.getElementById("studentCount");
+        if (countDiv) {
+          countDiv.textContent = 👥 ${count} élève${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''};
+        }
       }
 
 
       
       function startLiveGame() {
-        
-        
-        document.getElementById("liveGame").classList.remove("hidden");
-        document.getElementById("liveGame").classList.add("fullscreen-game");
-
-        const name = document.getElementById("gameName").value.trim();
+        const gameName = document.getElementById("gameName").value.trim();
         const subject = document.getElementById("subject").value;
         const selected = Array.from(document.querySelectorAll('#studentCheckboxes input:checked'));
         const isDuoMode = document.getElementById("duoMode").checked;
         
-        if (!name || !subject || selected.length === 0) {
+        if (!gameName || !subject || selected.length === 0) {
           return alert("Remplissez tous les champs et sélectionnez des joueurs.");
         }
         
-        // Regroupe les joueurs en duos si nécessaire
         if (isDuoMode && selected.length % 2 !== 0) {
           return alert("En mode duo, sélectionnez un nombre pair d'élèves.");
         }
@@ -1038,28 +1256,58 @@
             const name2 = selected[i + 1].value;
             
             livePlayers.push({
-              name: `${name1} & ${name2}`,
+              name: ${name1} & ${name2},
               score: 0,
               isDuo: true,
               members: [name1, name2],
-              avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${name1}-${name2}`
+              avatar: https://api.dicebear.com/7.x/thumbs/svg?seed=${name1}-${name2}
             });
           }
         } else {
-          livePlayers = selected.map(cb => ({
-            name: cb.value,
-            score: 0,
-            isDuo: false,
-            avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${cb.value}`
-          }));
+          const alreadyInDuo = manualDuos.flat();
+          livePlayers = [];
+          
+          // Ajout des duos
+          manualDuos.forEach(([name1, name2]) => {
+            livePlayers.push({
+              name: ${name1} & ${name2},
+              score: 0,
+              isDuo: true,
+              members: [name1, name2],
+              avatar: https://api.dicebear.com/7.x/thumbs/svg?seed=${name1}-${name2}
+            });
+          });
+          
+          // Ajout des solos restants
+          selected.forEach(cb => {
+            if (!alreadyInDuo.includes(cb.value)) {
+              livePlayers.push({
+                name: cb.value,
+                score: 0,
+                isDuo: false,
+                avatar: https://api.dicebear.com/7.x/thumbs/svg?seed=${cb.value}
+              });
+            }
+          });
+
         }
         
+        // 🔥 Active la vue en plein écran
         document.getElementById("playerSelection").classList.add("hidden");
         document.getElementById("app").classList.add("hidden");
+        
         document.getElementById("liveGame").classList.remove("hidden");
         document.getElementById("liveGame").classList.add("fullscreen-game");
+        document.getElementById("liveGame").classList.add("animate-in");
+        setTimeout(() => {
+          document.getElementById("liveGame").classList.remove("animate-in");
+        }, 600);
+
         
-        document.getElementById("gameDetails").textContent = `Partie : ${name} | Matière : ${subject}`;
+        document.body.classList.add("fullscreen-mode"); // ✅ bloque scroll sur body
+        window.scrollTo(0, 0); // ✅ force scroll en haut
+        
+        document.getElementById("gameDetails").textContent = Partie : ${gameName} | Matière : ${subject};
         updateLivePlayers();
         startTimer();
       }
@@ -1068,16 +1316,18 @@
         const container = document.getElementById("livePlayers");
         container.innerHTML = "";
         
-        // Trouve le meilleur score
         let bestScore = Math.max(...livePlayers.map(p => p.score));
         
         livePlayers.forEach(player => {
           const isLeader = player.score === bestScore && bestScore > 0;
-          const medalHTML = isLeader ? `<div class="medal">🥇</div>` : "";
+          const medalHTML = isLeader ? <div class="medal">🥇</div> : "";
           
           const div = document.createElement("div");
           div.className = "card";
-          div.innerHTML = `
+          div.classList.remove("leader"); // pour réinitialiser
+          
+          
+          div.innerHTML = 
       ${medalHTML}
       <img src="${player.avatar}" class="avatar">
       <h3>${player.name}</h3>
@@ -1088,10 +1338,13 @@
       </div>
       <button onclick="changeScore('${player.name}', 1)">+1</button>
       <button onclick="changeScore('${player.name}', -1)">-1</button>
-    `;
+    ;
+          if (isLeader) div.classList.add("leader");
+          
           container.appendChild(div);
         });
       }
+
       
       function changeScore(name, delta) {
         const player = livePlayers.find(p => p.name === name);
@@ -1100,7 +1353,7 @@
         if (superBonusActive && delta > 0) {
           delta = 5;
           superBonusActive = false;
-          alert(`${name} a gagné le SUPER BONUS (+5 points) !`);
+          alert(${name} a gagné le SUPER BONUS (+5 points) !);
         }
         
         player.score += delta;
@@ -1133,16 +1386,17 @@
         // Mise à jour individuelle
         const scoreEl = document.getElementById("score-" + name);
         if (scoreEl) {
-          scoreEl.textContent = `${player.score} pts`;
-          scoreEl.className = `score score-big ${player.score > 0 ? "positive" : (player.score < 0 ? "negative" : "zero")}`;
+          scoreEl.textContent = ${player.score} pts;
+          scoreEl.className = score score-big ${player.score > 0 ? "positive" : (player.score < 0 ? "negative" : "zero")};
         }
         
         const bar = document.getElementById("bar-" + name);
         if (bar) {
-          bar.style.width = `${Math.min(100, Math.max(0, (player.score / 20) * 100))}%`;
+          bar.style.width = ${Math.min(100, Math.max(0, (player.score / 20) * 100))}%;
         }
         
-        updateLivePlayers();
+        updateLivePlayers(); // ✅ animation au démarrage uniquement
+        
       }
 
 
@@ -1153,10 +1407,41 @@
         document.getElementById("liveGame").classList.remove("fullscreen-game");
         document.getElementById("app").classList.remove("hidden");
         
+        const now = new Date();
+        const history = JSON.parse(localStorage.getItem("gameHistory") || "[]");
+        
+        const summary = {
+          date: now.toLocaleString(),
+          name: document.getElementById("gameName").value.trim(),
+          subject: document.getElementById("subject").value,
+          players: livePlayers.map(p => ({
+            name: p.name,
+            score: p.score
+          }))
+        };
+        
+        history.push(summary);
+        localStorage.setItem("gameHistory", JSON.stringify(history));
+
+        
         localStorage.setItem("globalScores", JSON.stringify(globalScores));
         updateGlobalRanking();
         showCurrentGameRanking(); // 👉 affiche le classement de la partie
+        autoExportData();
+        // 🔒 Sauvegarde interne automatique
+        const backupData = {
+          classes: JSON.parse(localStorage.getItem("classes") || "{}"),
+          globalScores: JSON.parse(localStorage.getItem("globalScores") || "{}"),
+          subjectScores: JSON.parse(localStorage.getItem("subjectScores") || "{}"),
+          gameHistory: JSON.parse(localStorage.getItem("gameHistory") || "[]")
+        };
+        
+        localStorage.setItem("backup", JSON.stringify(backupData));
+
         livePlayers = [];
+        
+        document.body.classList.remove("fullscreen-mode");
+        
       }
       function showCurrentGameRanking() {
         const table = document.getElementById("currentGameRankingTable");
@@ -1166,11 +1451,11 @@
         
         sortedPlayers.forEach((player, index) => {
           const row = document.createElement("tr");
-          row.innerHTML = `
+          row.innerHTML = 
       <td>${index + 1}</td>
       <td>${player.name}</td>
       <td>${player.score} pts</td>
-    `;
+    ;
           table.appendChild(row);
         });
         
@@ -1190,7 +1475,7 @@
         .sort((a, b) => b[1] - a[1])
         .forEach(([name, score]) => {
           const li = document.createElement("li");
-          li.textContent = `${name} - ${score} pts`;
+          li.textContent = ${name} - ${score} pts;
           list.appendChild(li);
         });
         
@@ -1206,7 +1491,7 @@
         .sort((a, b) => b[1] - a[1])
         .forEach(([className, score]) => {
           const li = document.createElement("li");
-          li.textContent = `${className} - ${score} pts`;
+          li.textContent = ${className} - ${score} pts;
           classList.appendChild(li);
         });
       }
@@ -1222,7 +1507,14 @@
           ranking.classList.add("hidden");
         } else {
           ranking.classList.remove("hidden");
+          
+          
         }
+        
+        if (!admin.classList.contains("hidden")) {
+          showGameHistory(); // affiche l’historique
+        }
+
       }
 
       
@@ -1233,7 +1525,7 @@
           time++;
           const minutes = String(Math.floor(time / 60)).padStart(2, '0');
           const seconds = String(time % 60).padStart(2, '0');
-          document.getElementById("timer").textContent = `${minutes}:${seconds}`;
+          document.getElementById("timer").textContent = ${minutes}:${seconds};
         }, 1000);
       }
       
@@ -1254,7 +1546,7 @@
         .sort((a, b) => b[1] - a[1])
         .forEach(([name, score]) => {
           const li = document.createElement("li");
-          li.textContent = `${name} - ${score} pts`;
+          li.textContent = ${name} - ${score} pts;
           list.appendChild(li);
         });
       }
@@ -1303,19 +1595,237 @@
         reader.readAsText(file);
       }
 
+      function showGameHistory() {
+        const history = JSON.parse(localStorage.getItem("gameHistory") || "[]");
+        const container = document.getElementById("historyContainer");
+        container.innerHTML = "";
+        
+        if (history.length === 0) {
+          container.innerHTML = "<p>Aucune partie enregistrée.</p>";
+          return;
+        }
+        
+        history.reverse().forEach((game, index) => {
+          const card = document.createElement("div");
+          card.style.border = "2px solid #ffd700";
+          card.style.borderRadius = "10px";
+          card.style.padding = "10px";
+          card.style.marginBottom = "10px";
+          card.style.background = "#1e293b";
+          card.innerHTML = 
+      <strong>${game.date}</strong><br>
+      Partie : <em>${game.name}</em><br>
+      Matière : <em>${game.subject}</em><br>
+      Joueurs :
+      <ul>
+        ${game.players.map(p => <li>${p.name} - ${p.score} pts</li>).join("")}
+      </ul>
+      <button onclick="deleteGameFromHistory(${history.length - 1 - index})" style="background-color:#ef4444;color:white;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;">🗑 Supprimer</button>
+    ;
+          container.appendChild(card);
+        });
+      }
+      
+      function deleteGameFromHistory(index) {
+        const history = JSON.parse(localStorage.getItem("gameHistory") || "[]");
+        history.splice(index, 1);
+        localStorage.setItem("gameHistory", JSON.stringify(history));
+        showGameHistory();
+      }
+      
+      async function exportHistoryToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const history = JSON.parse(localStorage.getItem("gameHistory") || "[]");
+        
+        if (history.length === 0) {
+          alert("Aucune partie à exporter.");
+          return;
+        }
+        
+        let y = 10;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("Historique des parties - Quiz Collège", 10, y);
+        y += 10;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+        
+        history.forEach((game, idx) => {
+          const header = ${idx + 1}. [${game.date}] ${game.name} - ${game.subject};
+          doc.text(header, 10, y);
+          y += 7;
+          
+          game.players.forEach(p => {
+            doc.text(   - ${p.name}: ${p.score} pts, 10, y);
+            y += 6;
+          });
+          
+          y += 4;
+          
+          // Nouvelle page si trop bas
+          if (y > 270) {
+            doc.addPage();
+            y = 10;
+          }
+        });
+        
+        doc.save("historique_quiz.pdf");
+      }
+      
+      function autoExportData() {
+        const data = {
+          classes: JSON.parse(localStorage.getItem("classes") || "{}"),
+          globalScores: JSON.parse(localStorage.getItem("globalScores") || "{}"),
+          subjectScores: JSON.parse(localStorage.getItem("subjectScores") || "{}"),
+          gameHistory: JSON.parse(localStorage.getItem("gameHistory") || "[]")
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement("a");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        a.href = url;
+        a.download = sauvegarde_quiz_${timestamp}.json;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+      }
 
+      function restoreFromBackup() {
+        const backup = localStorage.getItem("backup");
+        if (!backup) {
+          alert("Aucune sauvegarde automatique disponible.");
+          return;
+        }
+        
+        try {
+          const data = JSON.parse(backup);
+          if (data.classes && data.globalScores && data.subjectScores && data.gameHistory) {
+            localStorage.setItem("classes", JSON.stringify(data.classes));
+            localStorage.setItem("globalScores", JSON.stringify(data.globalScores));
+            localStorage.setItem("subjectScores", JSON.stringify(data.subjectScores));
+            localStorage.setItem("gameHistory", JSON.stringify(data.gameHistory));
+            alert("Sauvegarde restaurée avec succès !");
+            updateAdmin();
+            updateGlobalRanking();
+            updateSubjectRanking();
+          } else {
+            alert("La sauvegarde est invalide.");
+          }
+        } catch (e) {
+          alert("Erreur lors de la restauration.");
+        }
+      }
+      
+      function addManualPoints() {
+        const student = document.getElementById("manualStudentSelect").value;
+        const pts = parseInt(document.getElementById("manualPoints").value);
+        const subject = prompt("Pour quelle matière ?");
+        
+        if (!student || isNaN(pts) || !subject) return alert("Champs invalides.");
+        
+        globalScores[student] = (globalScores[student] || 0) + pts;
+        if (!subjectScores[subject]) subjectScores[subject] = {};
+        subjectScores[subject][student] = (subjectScores[subject][student] || 0) + pts;
+        
+        localStorage.setItem("globalScores", JSON.stringify(globalScores));
+        localStorage.setItem("subjectScores", JSON.stringify(subjectScores));
+        alert(+${pts} pts ajoutés à ${student} pour ${subject});
+        updateGlobalRanking();
+        updateSubjectRanking();
+      }
+
+      function resetStudentSelections() {
+        const checkboxes = document.querySelectorAll('#studentCheckboxes input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+      }
+
+      function endLiveGameWithWinner() {
+        if (livePlayers.length === 0) return endLiveGame();
+        
+        const max = Math.max(...livePlayers.map(p => p.score));
+        const winners = livePlayers.filter(p => p.score === max);
+        const names = winners.map(p => p.name).join(", ");
+        
+        alert(🎉 Bravo à ${names} avec ${max} pts !);
+        endLiveGame();
+      }
+
+      function showAdminTab(tabId) {
+        const tabs = document.querySelectorAll('.admin-tab-content');
+        tabs.forEach(tab => tab.classList.add('hidden'));
+        
+        const activeTab = document.getElementById('tab-' + tabId);
+        if (activeTab) {
+          activeTab.classList.remove('hidden');
+        }
+        
+        if (tabId === "classements") {
+          updateGlobalRanking();
+          updateSubjectRanking();
+        }
+        if (tabId === "manuel") {
+          updateManualSelects();
+        }
+        if (tabId === "historique") {
+          updateHistoryList();
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        showAdminTab('gestion'); // On commence par afficher l'onglet gestion
+      });
+
+      function showRankingSection() {
+        const section = document.getElementById("rankingSection");
+        section.style.display = "flex";
+        updateGlobalRanking();
+        updateClassRanking();
+        updateSubjectRanking();
+      }
+
+      function toggleRankingSection() {
+        const section = document.getElementById("rankingSection");
+        const btn = document.getElementById("toggleRankingBtn");
+        
+        if (section.style.display === "none" || section.style.display === "") {
+          section.style.display = "flex";
+          btn.textContent = "Cacher les classements";
+          updateGlobalRanking();
+          updateClassRanking();
+          updateSubjectRanking();
+        } else {
+          section.style.display = "none";
+          btn.textContent = "Afficher les classements";
+        }
+      }
+      function openStudentProfile(name) {
+        const data = JSON.parse(localStorage.getItem("studentsData") || "{}");
+        for (let className in data) {
+          const student = data[className].find(s => s.name === name);
+          if (student) {
+            document.getElementById("profileAvatar").src = student.avatar || https://api.dicebear.com/6.x/thumbs/svg?seed=${encodeURIComponent(name)};
+            document.getElementById("profileName").textContent = student.name;
+            document.getElementById("profileClass").textContent = className;
+            document.getElementById("profilePoints").textContent = student.totalPoints || 0;
+            document.getElementById("profileWins").textContent = student.wins || 0;
+            document.getElementById("studentProfileModal").classList.remove("hidden");
+          }
+        }
+      }
+      
+      function closeStudentProfile() {
+        document.getElementById("studentProfileModal").classList.add("hidden");
+      }
 
       
       window.onload = function () {
         document.getElementById("rankingSection").classList.add("hidden");
         updateAdmin();
-        updateGlobalRanking();
-        updateSubjectRanking();
         openPlayerSelection();
 
       };
     </script>
-
-  
-
-      
