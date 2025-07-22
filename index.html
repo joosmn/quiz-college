@@ -871,20 +871,6 @@
           <p>Nombre total d'élèves : <span id="totalStudents"></span></p>
           <div id="allStudentsList"></div>
           
-          <!-- Fiche de profil élève -->
-          <div id="studentProfileModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 999;">
-            <div class="modal-content" style="background: white; border-radius: 12px; padding: 20px; width: 300px; text-align: center;">
-              <img id="profileAvatar" src="" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 10px;">
-              <h2 id="profileName"></h2>
-              <p><strong>Classe :</strong> <span id="profileClass"></span></p>
-              <p><strong>Points :</strong> <span id="profilePoints"></span></p>
-              <p><strong>Parties gagnées :</strong> <span id="profileWins"></span></p>
-              <button onclick="closeStudentProfile()">Fermer</button>
-            </div>
-          </div>
-
-          
           <h3>➕ Ajouter des points manuellement</h3>
           <select id="manualClassSelect"></select>
           <select id="manualStudentSelect"></select>
@@ -1801,24 +1787,6 @@
           section.style.display = "none";
           btn.textContent = "Afficher les classements";
         }
-      }
-      function openStudentProfile(name) {
-        const data = JSON.parse(localStorage.getItem("studentsData") || "{}");
-        for (let className in data) {
-          const student = data[className].find(s => s.name === name);
-          if (student) {
-            document.getElementById("profileAvatar").src = student.avatar || https://api.dicebear.com/6.x/thumbs/svg?seed=${encodeURIComponent(name)};
-            document.getElementById("profileName").textContent = student.name;
-            document.getElementById("profileClass").textContent = className;
-            document.getElementById("profilePoints").textContent = student.totalPoints || 0;
-            document.getElementById("profileWins").textContent = student.wins || 0;
-            document.getElementById("studentProfileModal").classList.remove("hidden");
-          }
-        }
-      }
-      
-      function closeStudentProfile() {
-        document.getElementById("studentProfileModal").classList.add("hidden");
       }
 
       
