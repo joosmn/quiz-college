@@ -1674,7 +1674,7 @@
         const a = document.createElement("a");
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
         a.href = url;
-        a.download = sauvegarde_quiz_${timestamp}.json;
+        a.download = `sauvegarde_quiz_${timestamp}.json`;
         a.click();
         
         URL.revokeObjectURL(url);
